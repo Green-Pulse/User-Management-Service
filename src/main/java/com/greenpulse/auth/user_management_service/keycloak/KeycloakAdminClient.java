@@ -2,17 +2,22 @@ package com.greenpulse.auth.user_management_service.keycloak;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.greenpulse.auth.user_management_service.dto.UserDto;
+import com.greenpulse.auth.user_management_service.mapper.KeycloakUserMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 
 @Component
+@RequiredArgsConstructor
 public class KeycloakAdminClient {
+
+    private final KeycloakUserMapper userMapper;
 
     @Value("${spring.keycloak.server-url}")
     private String keycloakUrl;
@@ -35,55 +40,57 @@ public class KeycloakAdminClient {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public String getAdminAccessToken() {
-        String url = keycloakUrl + "/realms/master/protocol/openid-connect/token";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        String body = "grant_type=password&client_id=admin-cli" +
-                "&username=" + adminUsername +
-                "&password=" + adminPassword;
-
-        HttpEntity<String> request = new HttpEntity<>(body, headers);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-        try {
-            JsonNode json = objectMapper.readTree(response.getBody());
-            return json.get("access_token").asText();
-        } catch (Exception e) {
-            throw new RuntimeException("Error getting access token", e);
-        }
+    public String getCurrentUserIdFromToken(Jwt jwt) {
+        return jwt.getSubject();
     }
 
-    public ResponseEntity<String> getAllUsers() {
-        String token = getAdminAccessToken();
+    public List<UserDto> getAllUsers() {
+        String token = userMapper.getAdminAccessToken();
         String url = keycloakUrl + "/admin/realms/" + realm + "/users";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
-        return restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), String.class
+        );
+
+        try {
+            JsonNode root = objectMapper.readTree(response.getBody());
+            List<UserDto> users = new ArrayList<>();
+            for (JsonNode node : root) {
+                users.add(userMapper.toUserDto(node));
+            }
+            return users;
+        } catch (Exception e) {
+            throw new RuntimeException("Error mapping users", e);
+        }
     }
 
+    public UserDto getUserById(String userId) {
+        String token = userMapper.getAdminAccessToken();
+        String url = keycloakUrl + "/admin/realms/" + realm + "/users/" + userId;
 
-    public String getUserIdByUsername(String username) {
-        ResponseEntity<String> response = getUserByUsername(username);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), String.class
+        );
+
         try {
-            JsonNode array = objectMapper.readTree(response.getBody());
-            if (array.isArray() && array.size() > 0) {
-                return array.get(0).get("id").asText();
-            }
-            throw new RuntimeException("User not found by username: " + username);
+            JsonNode node = objectMapper.readTree(response.getBody());
+            return userMapper.toUserDto(node);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse user ID from response", e);
+            throw new RuntimeException("Failed to map user by ID", e);
         }
     }
 
     public void updateUserByUsername(String username, Map<String, Object> updates) {
-        String userId = getUserIdByUsername(username);
-        String token = getAdminAccessToken();
+        String userId = String.valueOf(getUserByUsername(username).getId());
+        String token = userMapper.getAdminAccessToken();
         String url = keycloakUrl + "/admin/realms/" + realm + "/users/" + userId;
 
         HttpHeaders headers = new HttpHeaders();
@@ -95,8 +102,8 @@ public class KeycloakAdminClient {
     }
 
     public void deleteUserByUsername(String username) {
-        String userId = getUserIdByUsername(username);
-        String token = getAdminAccessToken();
+        String userId = String.valueOf(getUserByUsername(username).getId());
+        String token = userMapper.getAdminAccessToken();
         String url = keycloakUrl + "/admin/realms/" + realm + "/users/" + userId;
 
         HttpHeaders headers = new HttpHeaders();
@@ -106,20 +113,30 @@ public class KeycloakAdminClient {
         restTemplate.exchange(url, HttpMethod.DELETE, entity, Void.class);
     }
 
-    public String getCurrentUserIdFromToken(Jwt jwt) {
-        return jwt.getSubject(); // обычно — UUID юзера
-    }
-
-    public ResponseEntity<String> getUserByUsername(String username) {
-        String token = getAdminAccessToken();
+    public UserDto getUserByUsername(String username) {
+        String token = userMapper.getAdminAccessToken();
         String url = keycloakUrl + "/admin/realms/" + realm + "/users?username=" + username;
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
-        return restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+                url, HttpMethod.GET, new HttpEntity<>(headers), String.class
+        );
+
+        try {
+            JsonNode array = objectMapper.readTree(response.getBody());
+            if (array.isArray() && array.size() > 0) {
+                return userMapper.toUserDto(array.get(0));
+            } else {
+                throw new RuntimeException("User not found: " + username);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to map user from response", e);
+        }
     }
+
 
     public void logout(String refreshToken) {
         String url = keycloakUrl + "/realms/" + realm + "/protocol/openid-connect/logout";

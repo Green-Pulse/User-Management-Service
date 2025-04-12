@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -23,8 +24,8 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<String> getUsers() {
-        return keycloakAdminClient.getAllUsers();
+    public ResponseEntity<List<UserDto>> getUsers() {
+        return ResponseEntity.ok(keycloakAdminClient.getAllUsers());
     }
 
     @PutMapping("/by-username/{username}")
@@ -43,18 +44,19 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/me")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<String> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
-        String userId = keycloakAdminClient.getCurrentUserIdFromToken(jwt);
-        return keycloakAdminClient.getUserByUsername(jwt.getClaimAsString("preferred_username"));
-    }
-
     @GetMapping("/by-username/{username}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<String> getUserByUsername(@PathVariable String username) {
-        return keycloakAdminClient.getUserByUsername(username);
+    public ResponseEntity<UserDto> getUserByUsername(@PathVariable String username) {
+        return ResponseEntity.ok(keycloakAdminClient.getUserByUsername(username));
     }
+
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserDto> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
+        String userId = keycloakAdminClient.getCurrentUserIdFromToken(jwt);
+        return ResponseEntity.ok(keycloakAdminClient.getUserById(userId));
+    }
+
 
     @PostMapping("/logout")
     @PreAuthorize("isAuthenticated()")
@@ -62,5 +64,4 @@ public class UserController {
         keycloakAdminClient.logout(refreshToken);
         return ResponseEntity.ok().build();
     }
-
 }
