@@ -2,6 +2,13 @@ server:
   port: 8085
 
 spring:
+  keycloak:
+    server-url: http://localhost:8180
+    realm: greenpulse
+    client-id: greenpulseclient
+    client-secret: ${KEYCLOAK_SECRET}
+    admin-username: admin
+    admin-password: admin
   application:
     name=user-management-service
   liquibase:
