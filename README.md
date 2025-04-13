@@ -58,7 +58,7 @@ All requests to Keycloak are made using an `admin-cli` token which is retrieved 
 POST /api/users/logout
 Content-Type: application/x-www-form-urlencoded
 
-refreshToken=your-refresh-token-here
+refreshToken=refresh-token
 ```
 
 Used to revoke refresh tokens when logging out a user.
