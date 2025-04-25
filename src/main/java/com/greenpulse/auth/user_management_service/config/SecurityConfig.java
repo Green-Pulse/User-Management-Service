@@ -30,7 +30,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        return JwtDecoders.fromIssuerLocation("http://localhost:8180/realms/greenpulse");
+        return JwtDecoders.fromIssuerLocation("http://keycloak:8080/realms/greenpulse");
     }
 
 }
