@@ -42,7 +42,7 @@ public class KafkaConfig {
         deserializer.setUseTypeMapperForKey(true);
 
         Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "[::1]:9092,[::1]:9094,[::1]:9096");
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka-1:9092,kafka-2:9094,kafka-3:9096");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "user-registered-events");

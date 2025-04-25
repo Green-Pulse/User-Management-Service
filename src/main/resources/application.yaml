@@ -3,7 +3,7 @@ server:
 
 spring:
   keycloak:
-    server-url: http://localhost:8180
+    server-url: http://keycloak:8080
     realm: greenpulse
     client-id: greenpulseclient
     client-secret: ${KEYCLOAK_SECRET}
@@ -15,7 +15,7 @@ spring:
       change-log: classpath:db/changelog/db.changelog-master.yaml
       enabled: true
   datasource:
-    url: jdbc:postgresql://${DATABASE_HOST:localhost}:${DATABASE_PORT:5432}/${DATABASE_NAME:greenpulse}
+    url: jdbc:postgresql://${DATABASE_HOST:postgres}:${DATABASE_PORT:5432}/${DATABASE_NAME:greenpulse}
     username: ${DATABASE_USERNAME:admin}
     password: ${DATABASE_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
@@ -28,8 +28,8 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
+    bootstrap-servers: kafka-1:9092,kafka-2:9095,kafka-3:9098
     consumer:
-      bootstrap-servers: "[::1]:9092, [::1]:9094, [::1]:9096"
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       group-id: user-registered-events
@@ -41,4 +41,4 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8180/realms/greenpulse
+          issuer-uri: http://keycloak:8080/realms/greenpulse
