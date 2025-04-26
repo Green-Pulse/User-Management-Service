@@ -3,6 +3,7 @@ package com.greenpulse.auth.user_management_service.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
@@ -27,12 +28,14 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwtConfigurer ->
-                                jwtConfigurer.jwtAuthenticationConverter(jwtAuthenticationConverter)) // Используем JWT из Keycloak
+                                jwtConfigurer.jwtAuthenticationConverter(jwtAuthenticationConverter)
+                                        .decoder(jwtDecoder())) // Используем JWT из Keycloak
                 );
         return http.build();
     }
 
     @Bean
+    @Lazy
     public JwtDecoder jwtDecoder() {
         return JwtDecoders.fromIssuerLocation(issuerUri);
     }
